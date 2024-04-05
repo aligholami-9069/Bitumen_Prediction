@@ -123,7 +123,10 @@ This script estimates and draws the DT values using the well-logging input data 
 * #### __three_regression.m__
 This file implements multi-variable linear regression method in Matlab R2022b. 
 
-### __05 predictions of Bitumen in wells C, D, F
+---
+
+### __05 predictions of Bitumen in wells C, D, F__
+
 These scripts are designed for prediction of bitumen in other wells using the models obtained from AI systems in this study. To run it:
 #### In first step:
 Run tst_create_data.m script, which loads, creates and divides the well-logging input data. 
