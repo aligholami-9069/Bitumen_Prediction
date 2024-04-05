@@ -1,5 +1,5 @@
 # Bitumen_Prediction
-# Estimation of solid bitumen content in hydrocarbon reservoirs: fusion of individual machine learning models and petrophysical well-logging data in a committee machine 
+# Estimation of solid bitumen content in hydrocarbon reservoirs: Fusion of individual machine learning models and petrophysical well-logging data in a two-step committee machine
 
 ### By:
 ### Ali Gholami Vijouyeh <sup>a</sup>, Maha Raoof Hamoudi <sup>b</sup>, Dyana Aziz Bayz <sup>c</sup>, Ali Kadkhodaie <sup>a</sup>
