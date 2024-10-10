@@ -18,18 +18,26 @@ aco_y_pred = aco_result.y_Predict_Result.y_pred.ACO;
 sa_result  = load('./Bitumen/Results/Optimization/result_y_predict.mat');
 sa_y_pred = sa_result.y_Predict_Result.y_pred.SA;
 
+cma_result  = load('./Bitumen/Results/Optimization/CMA-ES/CMAESResult.mat');
+cma_y_pred = cma_result.CMAESResult.y_pred;
+
+gwo_result  = load('./Bitumen/Results/Optimization/result_y_predict.mat');
+gwo_y_pred = gwo_result.y_Predict_Result.y_pred.GWO;
+
 tst_lbl = table2array(readtable('./Bitumen/data/trn_tst/tst_lbl.dat'));
 tst_lbl = tst_lbl(~isnan(tst_lbl));
 %% Coefficients
 
 x1 = ga_y_pred;
-x2 = aco_y_pred;
-x3 = sa_y_pred;
+x2 = sa_y_pred;
+x3 = aco_y_pred;
+x4 = cma_y_pred;
+x5 = gwo_y_pred;
 y = tst_lbl; 
-x=[ones(size(x1)), x1, x2, x3];
+x=[ones(size(x1)), x1, x2, x3, x4, x5];
 a=x\y;
-%% three regression
-Y_final=(a(1,1)) + (a(2,1) * x1) + (a(3,1) * x2) + (a(4,1) * x3);
+%% Multi-variable linear regression (MVLR)
+Y_final=(a(1,1)) + (a(2,1) * x1) + (a(3,1) * x2) + (a(4,1) * x3) + (a(5,1) * x4) + (a(6,1) * x5);
 Y_final = max(Y_final,0);
 mlr_mse = immse(y,Y_final);
 
