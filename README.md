@@ -40,7 +40,7 @@
     Implements Neuro-Fuzzy algorithm in Matlab R2022b. 
 
 * #### __optimization.m__
-    This file implements all optimization committee machine algorithms in Matlab R2022b, which are "GA", "SA", and "ACOR". 
+    This file implements all optimization committee machine algorithms in Matlab R2022b, which are "GA", "SA", "ACOR", "CMA-ES" and "GWO". 
 
 * #### __RBF.m__
     Implements Radial Basis Function algorithm in Matlab R2022b. 
@@ -62,14 +62,20 @@
     This file has been used to parameter tuning for back-propagation neural network algorithm using Matlab R2022b. 
 
 * #### __optimization_01_ga.m__
-    This file has been used to parameter tuning for GA optimization algorithm in Matlab R2022b. 
+    This file has been used to parameter tuning for GA optimization algorithm in Matlab R2022b/R2017b. 
 
 * #### __optimization_02_sa.m__
-    This file has been used to parameter tuning for SA optimization algorithm in Matlab R2022b. 
+    This file has been used to parameter tuning for SA optimization algorithm in Matlab R2022b/R2017b. 
 
 * #### __optimization_03_aco.m__
-    This script tunes parameter for ACOR optimization algorithm in Matlab R2022b. 
+    This script tunes parameter for ACOR optimization algorithm in Matlab R2022b/R2017b. 
 
+* #### __optimization_05_gwo.m__
+    This script tunes parameter for GWO optimization algorithm in Matlab R2022b/R2017b.
+  
+* #### __optimisation_with_cmaes_tuning.m__
+    This script tunes parameter for CMA-ES optimization algorithm in Matlab R2022b.
+    
 * #### __RBF_param.m__
 This file has been used to parameter tuning for Radial Basis Function algorithm using Matlab R2022b. 
 
@@ -121,7 +127,7 @@ This script estimates and draws the DT values using the well-logging input data 
 ### __04 Multi-variable linear regression__
 
 * #### __three_regression.m__
-This file implements multi-variable linear regression method in Matlab R2022b. 
+This file implements multi-variable linear regression method in Matlab R2022b/R2017b. 
 
 ---
 
