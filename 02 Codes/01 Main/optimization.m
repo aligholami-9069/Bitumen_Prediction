@@ -162,15 +162,102 @@ title 'Optimised by CMACOR'
 subtitle(sprintf(str_format,aco_mse,aco_r),'fontweight','bold','fontsize',font_size);
 axis([0 25 0 30]);
 saveas(gcf,strcat(path,'aco.png'))
+
+%% GWO
+
+disp('GWO')
+disp('-------------')
+
+rng('default')
+SearchAgents_no = 6; % Number of search agents
+Max_iteration = 300;  % Maximum numbef of iterations
+
+dim = 6;
+lb = 0;
+ub = 1;
+fobj = @MSE_WA;
+
+[~,gwo_x,~] = GWO(SearchAgents_no,Max_iteration,lb,ub,dim,fobj,...
+                         nn_y_pred,fl_y_pred,nf_y_pred,rbf_y_pred,xgb_y_pred,lgbm_y_pred,tst_lbl,size(tst_lbl,1));
+
+    gwo_y = (gwo_x(1) * nn_y_pred)+...
+            (gwo_x(2) * fl_y_pred)+...
+            (gwo_x(3) * nf_y_pred)+...
+            (gwo_x(4) * rbf_y_pred)+...
+            (gwo_x(5) * xgb_y_pred)+...
+            (gwo_x(6) * lgbm_y_pred);
+ 
+gwo_mse = immse(tst_lbl,gwo_y);
+            
+figure;
+[~,~,gwo_r] = postreg(tst_lbl',gwo_y');
+xlabel(strcat('Predicted Bitumen (mgHC/g rock)'),'fontweight','bold','fontsize',font_size);
+ylabel(strcat('Measured Bitumen (mgHC/g rock)'),'fontweight','bold','fontsize',font_size);
+title 'Optimised by CMGWO'
+subtitle(sprintf(str_format,gwo_mse,gwo_r),'fontweight','bold','fontsize',font_size);
+axis([0 25 0 30]);
+saveas(gcf,strcat(path,'gwo.png'))
+
+%% CMAES
+
+disp('CMAES')
+disp('-------------')
+rng('default')
+
+% Parameters
+nVar = 6;                % Number of Unknown (Decision) Variables
+VarMin = 0.5;             % Lower Bound of Decision Variables
+VarMax = 0.6;              % Upper Bound of Decision Variables
+
+% CMA-ES Parameters
+MaxIt = 100;              % Maximum Number of Iterations
+lambda = (4+round(3*log(nVar)))*10;  % Population Size (and Number of Offsprings)
+mu = round(lambda/2);     % Number of Parents
+
+% Problem
+CostFunction=@MSE_WA;   % Cost Function
+
+% Run CMA-ES
+[BestSol, BestCost] = CMAES(CostFunction, nVar, VarMin, VarMax, MaxIt, lambda, mu,...
+                    nn_y_pred,fl_y_pred,nf_y_pred,rbf_y_pred,xgb_y_pred,lgbm_y_pred,tst_lbl,size(tst_lbl,1));
+                
+cmaes_x = BestSol.Position;
+
+cmaes_y = (cmaes_x(1) * nn_y_pred)+...
+          (cmaes_x(2) * fl_y_pred)+...
+          (cmaes_x(3) * nf_y_pred)+...
+          (cmaes_x(4) * rbf_y_pred)+...
+          (cmaes_x(5) * xgb_y_pred)+...
+          (cmaes_x(6) * lgbm_y_pred);
+                
+                
+ cmaes_y = max(cmaes_y,0);
+
+cmaes_mse = immse(tst_lbl,cmaes_y);
+
+figure;
+[~,~,cmaes_r] = postreg(tst_lbl',cmaes_y');
+
+xlabel(strcat('Predicted Bitumen (mgHC/g rock)'),'fontweight','bold','fontsize',font_size);
+ylabel(strcat('Measured Bitumen (mgHC/g rock)'),'fontweight','bold','fontsize',font_size);
+title 'Optimised by CMCMA-ES'
+subtitle(sprintf(str_format, cmaes_mse, cmaes_r), 'fontweight', 'bold', 'fontsize', font_size);
+axis([0 25 0 30]);
+
+saveas(gcf,strcat(path,'cmaes.png'))
 %% Result Matrix
 
 Results.R.GA = ga_r;
 Results.R.SA = simann_r;
 Results.R.ACO = aco_r;
+Results.R.CMA = cmaes_r;
+Results.R.GWO = gwo_r;
 
 Results.MSE.GA = ga_mse;
 Results.MSE.SA = simann_mse;
 Results.MSE.ACO = aco_mse;
+Results.MSE.CMA = cmaes_mse;
+Results.MSE.GWO = gwo_mse;
 
 save(strcat(path,'result_all.mat'),'Results');
 %% Result y Predict
@@ -178,6 +265,8 @@ save(strcat(path,'result_all.mat'),'Results');
 y_Predict_Result.y_pred.GA = ga_y;
 y_Predict_Result.y_pred.SA = simann_y;
 y_Predict_Result.y_pred.ACO = aco_y;
+y_Predict_Result.y_pred.CMA = cmaes_y;
+y_Predict_Result.y_pred.GWO = gwo_y;
 
 save(strcat(path,'result_y_predict.mat'),'y_Predict_Result');
 
@@ -263,3 +352,226 @@ function opt_params = ACO(d1,d2,d3,d4,d5,d6,d_real,d_count,n_iter,NA,alpha,beta,
     end   
     opt_params = tour_selected_param;
 end
+
+function [Alpha_score,Alpha_pos,Convergence_curve] = GWO(SearchAgents_no,Max_iter,lb,ub,dim,fobj,d1,d2,d3,d4,d5,d6,d_real,d_count)
+
+    % initialize alpha, beta, and delta_pos
+    Alpha_pos=zeros(1,dim);
+    Alpha_score=inf; %change this to -inf for maximization problems
+
+    Beta_pos=zeros(1,dim);
+    Beta_score=inf; %change this to -inf for maximization problems
+
+    Delta_pos=zeros(1,dim);
+    Delta_score=inf; %change this to -inf for maximization problems
+
+    %Initialize the positions of search agents
+    Positions=initialization(SearchAgents_no,dim,ub,lb);
+
+    Convergence_curve=zeros(1,Max_iter);
+
+    l=0;% Loop counter
+
+    % Main loop
+    while l<Max_iter
+        for i=1:size(Positions,1)  
+
+           % Return back the search agents that go beyond the boundaries of the search space
+            Flag4ub=Positions(i,:)>ub;
+            Flag4lb=Positions(i,:)<lb;
+            Positions(i,:)=(Positions(i,:).*(~(Flag4ub+Flag4lb)))+ub.*Flag4ub+lb.*Flag4lb;               
+
+            % Calculate objective function for each search agent
+            fitness=fobj(Positions(i,:),d1,d2,d3,d4,d5,d6,d_real,d_count);
+
+            % Update Alpha, Beta, and Delta
+            if fitness<Alpha_score 
+                Alpha_score=fitness; % Update alpha
+                Alpha_pos=Positions(i,:);
+            end
+
+            if fitness>Alpha_score && fitness<Beta_score 
+                Beta_score=fitness; % Update beta
+                Beta_pos=Positions(i,:);
+            end
+
+            if fitness>Alpha_score && fitness>Beta_score && fitness<Delta_score 
+                Delta_score=fitness; % Update delta
+                Delta_pos=Positions(i,:);
+            end
+        end
+
+
+        a=2-l*((2)/Max_iter); % a decreases linearly fron 2 to 0
+
+        % Update the Position of search agents including omegas
+        for i=1:size(Positions,1)
+            for j=1:size(Positions,2)
+                
+                rng('default')
+
+                r1=rand(); % r1 is a random number in [0,1]
+                r2=rand(); % r2 is a random number in [0,1]
+
+                A1=2*a*r1-a; % Equation (3.3)
+                C1=2*r2; % Equation (3.4)
+
+                D_alpha=abs(C1*Alpha_pos(j)-Positions(i,j)); % Equation (3.5)-part 1
+                X1=Alpha_pos(j)-A1*D_alpha; % Equation (3.6)-part 1
+
+                r1=rand();
+                r2=rand();
+
+                A2=2*a*r1-a; % Equation (3.3)
+                C2=2*r2; % Equation (3.4)
+
+                D_beta=abs(C2*Beta_pos(j)-Positions(i,j)); % Equation (3.5)-part 2
+                X2=Beta_pos(j)-A2*D_beta; % Equation (3.6)-part 2       
+
+                r1=rand();
+                r2=rand(); 
+
+                A3=2*a*r1-a; % Equation (3.3)
+                C3=2*r2; % Equation (3.4)
+
+                D_delta=abs(C3*Delta_pos(j)-Positions(i,j)); % Equation (3.5)-part 3
+                X3=Delta_pos(j)-A3*D_delta; % Equation (3.5)-part 3             
+
+                Positions(i,j)=(X1+X2+X3)/3;% Equation (3.7)
+
+            end
+        end
+        l=l+1;    
+        Convergence_curve(l)=Alpha_score;
+    end
+end
+
+function Positions=initialization(SearchAgents_no,dim,ub,lb)
+
+rng('default')
+
+Boundary_no= size(ub,2); % numnber of boundaries
+
+% If the boundaries of all variables are equal and user enter a signle
+% number for both ub and lb
+if Boundary_no==1
+    Positions=rand(SearchAgents_no,dim).*(ub-lb)+lb;
+end
+
+% If each variable has a different lb and ub
+if Boundary_no>1
+    for i=1:dim
+        ub_i=ub(i);
+        lb_i=lb(i);
+        Positions(:,i)=rand(SearchAgents_no,1).*(ub_i-lb_i)+lb_i;
+    end
+end
+end
+
+function [BestSol, BestCost] = CMAES(CostFunction, nVar, VarMin, VarMax, MaxIt, lambda, mu, d1, d2, d3, d4, d5, d6, d_real, d_count)
+    % Parameters
+    VarSize = [1 nVar];       % Decision Variables Matrix Size
+    sigma0 = 0.3*(VarMax-VarMin);  % Initial Step Size
+    w = log(mu+0.5)-log(1:mu); % Parent Weights
+    w = w/sum(w); 
+    mu_eff = 1/sum(w.^2);      % Number of Effective Solutions
+    cs = (mu_eff+2)/(nVar+mu_eff+5); % Step Size Control Parameters
+    ds = 1+cs+2*max(sqrt((mu_eff-1)/(nVar+1))-1,0);
+    ENN = sqrt(nVar)*(1-1/(4*nVar)+1/(21*nVar^2));
+    cc = (4+mu_eff/nVar)/(4+nVar+2*mu_eff/nVar);  % Covariance Update Parameters
+    c1 = 2/((nVar+1.3)^2+mu_eff);
+    alpha_mu = 2;
+    cmu = min(1-c1,alpha_mu*(mu_eff-2+1/mu_eff)/((nVar+2)^2+alpha_mu*mu_eff/2));
+    hth = (1.4+2/(nVar+1))*ENN;
+
+    % Initialization
+    ps = cell(MaxIt,1);
+    pc = cell(MaxIt,1);
+    C = cell(MaxIt,1);
+    sigma = cell(MaxIt,1);
+    ps{1} = zeros(VarSize);
+    pc{1} = zeros(VarSize);
+    C{1} = eye(nVar);
+    sigma{1} = sigma0;
+
+    empty_individual.Position = [];
+    empty_individual.Step = [];
+    empty_individual.Cost = [];
+
+    M = repmat(empty_individual, MaxIt, 1);
+    M(1).Position = unifrnd(VarMin, VarMax, VarSize);
+    M(1).Step = zeros(VarSize);
+    M(1).Cost = CostFunction(M(1).Position, d1, d2, d3, d4, d5, d6, d_real, d_count);
+
+    BestSol = M(1);
+    BestCost = zeros(MaxIt,1);
+
+    % CMA-ES Main Loop
+    for g = 1:MaxIt
+        % Generate Samples
+        pop = repmat(empty_individual, lambda, 1);
+        for i = 1:lambda
+            pop(i).Step = mvnrnd(zeros(VarSize), C{g});
+            pop(i).Position = M(g).Position + sigma{g}*pop(i).Step;
+            pop(i).Cost = CostFunction(pop(i).Position, d1, d2, d3, d4, d5, d6, d_real, d_count);
+
+            % Update Best Solution Ever Found
+            if pop(i).Cost < BestSol.Cost
+                BestSol = pop(i);
+            end
+        end
+
+        % Sort Population
+        Costs = [pop.Cost];
+        [Costs, SortOrder] = sort(Costs);
+        pop = pop(SortOrder);
+
+        % Save Results
+        BestCost(g) = BestSol.Cost;
+
+        % Display Results
+        disp(['Iteration ' num2str(g) ': Best Cost = ' num2str(BestCost(g))]);
+
+        % Exit At Last Iteration
+        if g == MaxIt
+            break;
+        end
+
+        % Update Mean
+        M(g+1).Step = 0;
+        for j = 1:mu
+            M(g+1).Step = M(g+1).Step + w(j)*pop(j).Step;
+        end
+        M(g+1).Position = M(g).Position + sigma{g}*M(g+1).Step;
+        M(g+1).Cost = CostFunction(M(g+1).Position, d1, d2, d3, d4, d5, d6, d_real, d_count);
+        if M(g+1).Cost < BestSol.Cost
+            BestSol = M(g+1);
+        end
+
+        % Update Step Size
+        ps{g+1} = (1-cs)*ps{g} + sqrt(cs*(2-cs)*mu_eff)*M(g+1).Step/chol(C{g})';
+        sigma{g+1} = sigma{g}*exp(cs/ds*(norm(ps{g+1})/ENN-1))^0.3;
+
+        % Update Covariance Matrix
+        if norm(ps{g+1})/sqrt(1-(1-cs)^(2*(g+1))) < hth
+            hs = 1;
+        else
+            hs = 0;
+        end
+        delta = (1-hs)*cc*(2-cc);
+        pc{g+1} = (1-cc)*pc{g} + hs*sqrt(cc*(2-cc)*mu_eff)*M(g+1).Step;
+        C{g+1} = (1-c1-cmu)*C{g} + c1*(pc{g+1}'*pc{g+1} + delta*C{g});
+        for j = 1:mu
+            C{g+1} = C{g+1} + cmu*w(j)*pop(j).Step'*pop(j).Step;
+        end
+
+        % If Covariance Matrix is not Positive Definite or Near Singular
+        [V, E] = eig(C{g+1});
+        if any(diag(E) < 0)
+            E = max(E, 0);
+            C{g+1} = V*E/V;
+        end
+    end
+end
+
+
